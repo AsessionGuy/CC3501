@@ -341,7 +341,7 @@ if __name__ == "__main__":
     cube = Model(shapes.Cube["position"],index_data=shapes.Cube["indices"])
     cube.init_gpu_data(mesh_pipeline)
 
-    sphere = Mesh("../assets/sphere.off")
+    sphere = Mesh("assets/sphere.off")
     sphere.init_gpu_data(mesh_pipeline)
 
     graph = SceneGraph(camera)
@@ -425,9 +425,9 @@ if __name__ == "__main__":
         axis_scene.draw()
 
         # Aquí se dibujan los grafos, descomentar según se necesite
-        graph.draw()
+        #graph.draw()
         #solar_system.draw()
-        #person.draw()
+        person.draw()
 
     pyglet.clock.schedule_interval(update, 1/60)
     pyglet.app.run()

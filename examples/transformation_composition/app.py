@@ -170,7 +170,8 @@ if __name__ == "__main__":
             -0.5, -0.5, 0
         ) @ tr.rotationX(total_time * 6.0)
 
-        window.program_state["bunny"]["BR"] = tr.translate(0.5, -0.5, 0) @ tr.rotationY(
+        window.program_st
+        ate["bunny"]["BR"] = tr.translate(0.5, -0.5, 0) @ tr.rotationY(
             total_time * 6.0
         )
 
