@@ -147,7 +147,7 @@ if __name__ == "__main__":
     camera.phi = np.pi / 4
     camera.theta = np.pi / 4
 
-    controlled_shape = Mesh("assets/Stanford_Bunny.stl", [0.77, 0.15, 0.23])
+    controlled_shape = Mesh("../assets/Stanford_Bunny.stl", [0.77, 0.15, 0.23])
     controlled_shape.init_gpu_data(pipeline)
 
     axes = Model(shapes.Axes["position"], shapes.Axes["color"])
