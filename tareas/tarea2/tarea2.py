@@ -26,8 +26,8 @@ class Controller(pyglet.window.Window):
 
         GL.glClearColor(1, 1, 1, 1.0)
         GL.glEnable(GL.GL_DEPTH_TEST)
-        GL.glEnable(GL.GL_CULL_FACE)
-        GL.glEnable(GL.)
+        GL.glCullFace(GL.GL_BACK)
+        GL.glFrontFace(GL.GL_CCW)
 
     def is_key_pressed(self, key):
         return self.key_handler[key]
@@ -200,7 +200,9 @@ class SceneGraph:
 class Car:
     def __init__(self, cam, transform=None, color=shapes.RED):
         if transform is None:
-            transform = [[0, -1, 0], [1, 1, 1], [0, 0, 0]]
+            transform = [[1, -1.75, 0], [1, 1, 1], [0, 0, -np.pi / 9]]
+        else:
+            transform = np.array([[1, -1.75, 0], [1, 1, 1], [0, 0, -np.pi / 9]]) + transform
         self.graph = SceneGraph(cam)
 
         self.graph.add_node("car",
@@ -221,25 +223,34 @@ class Car:
         self.graph.add_node("wheel0",
                             attach_to="forward_wheels",
                             mesh=wheel_mesh,
-                            color=shapes.BLACK,
+                            color=shapes.GRAY,
                             position=[0, 0, 1.25])
         self.graph.add_node("wheel1",
                             attach_to="forward_wheels",
                             mesh=wheel_mesh,
-                            color=shapes.BLACK,
+                            color=shapes.GRAY,
                             position=[0, 0, -1.25])
 
         self.graph.add_node("backward_wheels", attach_to="wheels", position=[-1.75, 0, 0])
         self.graph.add_node("wheel2",
                             attach_to="backward_wheels",
                             mesh=wheel_mesh,
-                            color=shapes.BLACK,
+                            color=shapes.GRAY,
                             position=[0, 0, 1.25])
         self.graph.add_node("wheel3",
                             attach_to="backward_wheels",
                             mesh=wheel_mesh,
-                            color=shapes.BLACK,
+                            color=shapes.GRAY,
                             position=[0, 0, -1.2])
+
+        self.graph.add_node("platform", attach_to="root")
+        self.graph.add_node("platform_mesh",
+                            attach_to="platform",
+                            mesh=platform_mesh,
+                            color=shapes.BLACK,
+                            scale=[4, 6, 4],
+                            rotation=[0, np.pi / 2, 0],
+                            position=[0, -4, 0])
 
     def draw(self):
         self.graph.draw()
@@ -271,8 +282,8 @@ if __name__ == "__main__":
 
     camera = OrbitCamera(20)
     car1 = Car(cam=camera)
-    car2 = Car(cam=camera, transform=[[-15, -3, -5.5], [1, 1, 1], [0, 0, 0]],color=shapes.GREEN)
-    car3 = Car(cam=camera, transform=[[-15, -3, 5.5], [1, 1, 1], [0, 0, 0]], color=shapes.YELLOW)
+    car2 = Car(cam=camera, transform=np.array([[0, 0, -5.5], [-1, -1, -1], [0, 0, 0]]), color=shapes.YELLOW)
+    car3 = Car(cam=camera, transform=np.array([[0, 0, 5.5], [-1, -1, -1`], [0, 0, 0]]), color=shapes.GREEN)
 
     environment = SceneGraph(cam=camera)
     environment.add_node("environment")
@@ -281,18 +292,9 @@ if __name__ == "__main__":
     environment.add_node("garage_mesh",
                          attach_to="garage",
                          mesh=garage_mesh,
-                         color=shapes.GRAY,
+                         color=shapes.BLACK,
                          scale=[12, 18, 12],
                          position=[0, 0.325, 0])
-
-    environment.add_node("platform", attach_to="environment")
-    environment.add_node("platform_mesh",
-                         attach_to="platform",
-                         mesh=platform_mesh,
-                         color=shapes.LIGHT_BLUE,
-                         scale=[4, 6, 4],
-                         rotation=[0, np.pi / 2, 0],
-                         position=[0, -4, 0])
 
     selected_car = car1
 
@@ -300,8 +302,8 @@ if __name__ == "__main__":
     def update(dt):
         controller.program_state["total_time"] += dt
 
-        selected_car.graph.graph.nodes["car"]["rotation"] = [0, 0, -np.pi / 9]
-        selected_car.graph.graph.nodes["car"]["position"] = [1, -1.75, 0]
+        # selected_car.graph.graph.nodes["car"]["rotation"] =
+        # selected_car.graph.graph.nodes["car"]["position"] =
 
         if controller.is_key_pressed(pyglet.window.key.A):
             camera.phi -= dt * 5
