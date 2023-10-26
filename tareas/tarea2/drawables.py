@@ -8,11 +8,14 @@ class Texture():
     def __init__(self,
                  path=None,
                  image=None,
+                 color=None,
                  sWrapMode=GL_CLAMP_TO_EDGE,
                  tWrapMode=GL_CLAMP_TO_EDGE,
                  minFilterMode=GL_LINEAR,
                  maxFilterMode=GL_LINEAR,
                  flip_top_bottom=True):
+        if color is None:
+            color = [255, 255, 255, 255]
         self.texture = None
         self.sWrapMode = sWrapMode
         self.tWrapMode = tWrapMode
@@ -25,7 +28,7 @@ class Texture():
         elif image is not None:
             self.create_from_image(image)
         else:
-            image = Image.fromarray(np.array([[[255, 255, 255, 255]]], dtype=np.uint8))
+            image = Image.fromarray(np.array([[color]], dtype=np.uint8))
             self.create_from_image(image)
             
 
@@ -35,7 +38,6 @@ class Texture():
     def create_from_file(self, path):
         image = Image.open(path)
         self.texture = texture_2D_setup(image, self.sWrapMode, self.tWrapMode, self.minFilterMode, self.maxFilterMode, self.flip_top_bottom)
-        image.close()
 
     def bind(self):
         glBindTexture(GL_TEXTURE_2D, self.texture)

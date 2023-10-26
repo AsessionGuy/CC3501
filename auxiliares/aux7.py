@@ -62,7 +62,7 @@ if __name__ == "__main__":
 
     cube = Model(shapes.Cube["position"], shapes.Cube["uv"], shapes.Cube["normal"], index_data=shapes.Cube["indices"])
     quad = Model(shapes.Square["position"], shapes.Square["uv"], shapes.Square["normal"], index_data=shapes.Square["indices"])
-    arrow = mesh_from_file("assets/arrow.off")[0]["mesh"]
+    arrow = mesh_from_file("../assets/arrow.off")[0]["mesh"]
 
     graph = SceneGraph(controller)
 
@@ -118,7 +118,7 @@ if __name__ == "__main__":
         ambient = [1, 1, 1],
         shininess = 32)
 
-    textura = Texture("assets/wall1.jpg")
+    textura = Texture("../assets/wall1.jpg")
 
     graph.add_node("object",
                    mesh = cube,
