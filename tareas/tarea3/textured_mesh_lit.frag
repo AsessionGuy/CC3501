@@ -1,6 +1,7 @@
 #version 330
 
 in vec3 fragPos;
+in vec2 fragTexCoord;
 in vec3 fragNormal;
 
 out vec4 outColor;
@@ -14,6 +15,7 @@ struct Material {
 };
 
 uniform Material u_material;
+uniform sampler2D u_texture;
 
 // Lighting
 uniform vec3 u_viewPos;
@@ -148,5 +150,9 @@ void main()
             result += computeSpotLight(normal, viewDir, u_spotLights[i]);
     }
 
-    outColor = vec4(result, 1.0f);
+    vec4 texel = texture(u_texture, fragTexCoord);
+    if (texel.a < 0.5)
+        discard;
+
+    outColor = vec4(result, 1.0f) * texel;
 }
