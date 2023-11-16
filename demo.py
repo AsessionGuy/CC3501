@@ -11,7 +11,7 @@ sys.path.append('../../')
 # ^
 # No es necesario este bloque de código si se ejecuta desde la carpeta raíz del repositorio
 
-import auxiliares.utils.shapes as shapes
+import tareas.tarea3.shapes as shapes
 from auxiliares.utils.camera import FreeCamera
 from auxiliares.utils.scene_graph import SceneGraph
 from auxiliares.utils.drawables import Model, Texture, DirectionalLight, PointLight, SpotLight, Material
@@ -67,7 +67,8 @@ if __name__ == "__main__":
         get_path("auxiliares/shaders/textured_mesh_lit.frag"))
 
     cube = Model(shapes.Cube["position"], shapes.Cube["uv"], shapes.Cube["normal"], index_data=shapes.Cube["indices"])
-    pyramid = Model(shapes.SquarePyramid["position"], shapes.SquarePyramid["uv"], shapes.SquarePyramid["normal"], index_data=shapes.SquarePyramid["indices"])
+    pyramid = Model(shapes.SquarePyramid["position"], shapes.SquarePyramid["uv"], shapes.SquarePyramid["normal"], index_data=
+    shapes.SquarePyramid["indices"])
     triangle = Model(shapes.Triangle["position"], shapes.Triangle["uv"], shapes.Triangle["normal"])
     quad = Model(shapes.Square["position"], shapes.Square["uv"], shapes.Square["normal"], index_data=shapes.Square["indices"])
     arrow = mesh_from_file("assets/arrow.off")[0]["mesh"]

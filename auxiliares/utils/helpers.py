@@ -1,12 +1,12 @@
 from pyglet.graphics.shader import ShaderProgram, Shader
 import trimesh as tm
-from OpenGL.GL import GL_LINES, GL_TRIANGLES
+from OpenGL.GL import GL_LINES
 import os
 from pathlib import Path
 from auxiliares.utils.drawables import Model, Texture
 from trimesh.scene.scene import Scene
 from auxiliares.utils.scene_graph import SceneGraph 
-import auxiliares.utils.shapes as shapes
+import tareas.tarea3.shapes as shapes
 
 import grafica.transformations as tr
 

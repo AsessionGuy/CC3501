@@ -11,11 +11,11 @@ sys.path.append('../../')
 # ^
 # No es necesario este bloque de código si se ejecuta desde la carpeta raíz del repositorio
 
-import auxiliares.utils.shapes as shapes
+import tareas.tarea3.shapes as shapes
 from auxiliares.utils.camera import FreeCamera
 from auxiliares.utils.scene_graph import SceneGraph
 from auxiliares.utils.drawables import Model, Texture, DirectionalLight, PointLight, SpotLight, Material
-from auxiliares.utils.helpers import init_axis, init_pipeline, mesh_from_file, get_path
+from auxiliares.utils.helpers import init_pipeline, mesh_from_file, get_path
 
 WIDTH = 640
 HEIGHT = 640

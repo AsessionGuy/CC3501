@@ -120,6 +120,7 @@ class Camera:
 class OrbitCamera(Camera):
     def __init__(self, distance):
         super().__init__()
+        self.sistema = "cartesiano"
         self.distance = distance
         self.phi = np.pi / 2
         self.theta = np.pi / 2

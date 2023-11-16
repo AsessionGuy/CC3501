@@ -1,20 +1,54 @@
 import numpy as np
 import pyglet.window
+from Box2D import b2World
 from OpenGL import GL
 
 import grafica.transformations as tr
 import helpers
-from drawables import Material, SpotLight, Texture
+from drawables import Material, SpotLight, Texture, DirectionalLight
 from scene_graph import SceneGraph
+from shapes import Square
 
 WIDTH = 1280
 HEIGHT = 720
+
+
+def update_scene(dt):
+    controller.program_state["total_time"] += dt
+
+    if keyboard[pyglet.window.key.A]:
+        camera.phi -= dt * 5
+    if keyboard[pyglet.window.key.D]:
+        camera.phi += dt * 5
+    if keyboard[pyglet.window.key.S]:
+        camera.distance += dt * 10
+    if keyboard[pyglet.window.key.W]:
+        if camera.distance > 5:
+            camera.distance -= dt * 10
+
+    if controller.program_state["pre_selected"]:
+        car_list.current_car.graph.graph.nodes[car_list.current_car.name]["rotation"] += np.array([0, dt * 7.0, 0])
+
+    car_list.current_car.graph.graph.nodes[car_list.current_car.name]["scale"] += dt * 3.0
+
+    camera.update()
+    car_list.current_car.update()
+
+
+def track_update(dt):
+    pass
+
+
+def draw_scene():
+    selection_cars.draw()
+    selection_environment.draw()
 
 
 class CarItem:
     def __init__(self, car):
         self.car = car
         self.next = None
+        self.prev = None
 
 
 class CarList:
@@ -25,14 +59,21 @@ class CarList:
         self._unselected_cars = []
 
     def add_car(self, car):
+        car.prev = self._cars[-1]
         self._cars[-1].next = car
         self._cars.append(car)
         self._cars[-1].next = self.first_car
         self._unselected_cars.append(car)
+        self.first_car.prev = self._cars[-1]
 
     def next_car(self):
         self._unselected_cars.append(self.current_car)
         self.current_car = self.current_car.next
+        self._unselected_cars.remove(self.current_car)
+
+    def prev_car(self):
+        self._unselected_cars.append(self.current_car)
+        self.current_car = self.current_car.prev
         self._unselected_cars.remove(self.current_car)
 
     def get_unselected_cars(self):
@@ -47,16 +88,15 @@ class Controller(pyglet.window.Window):
         self.set_caption(title)
         self.key_handler = pyglet.window.key.KeyStateHandler()
         self.push_handlers(self.key_handler)
-        self.program_state = {"total_time": 0.0, "is_selecting": False, "camera": None}
+        self.program_state = {"total_time": 0.0, "camera": None, "scene": None, "pre_selected": False,
+                              "selected": False, "vel_iters": 6, "pos_iters": 2, "car_body": None, "selected_car": None,
+                              "forwards": True}
 
         GL.glClearColor(0, 0, 0, 1.0)
         GL.glEnable(GL.GL_DEPTH_TEST)
         GL.glEnable(GL.GL_CULL_FACE)
         GL.glCullFace(GL.GL_BACK)
         GL.glFrontFace(GL.GL_CCW)
-
-    def is_key_pressed(self, key):
-        return self.key_handler[key]
 
 
 class Model:
@@ -102,19 +142,33 @@ class Model:
 
 
 class Camera:
-    def __init__(self):
+    def __init__(self, camera_type="perspective", width=WIDTH, height=HEIGHT):
         self.position = np.array([1, 0, 0], dtype=np.float32)
         self.focus = np.array([0, 0, 0], dtype=np.float32)
-        self.width = WIDTH
-        self.height = HEIGHT
+        self.type = camera_type
+        self.width = width
+        self.height = height
+
+    def update(self):
+        pass
 
     def get_view(self):
-        look_at_matrix = tr.lookAt(self.position, self.focus, np.array([0, 1, 0], dtype=np.float32))
-        return np.reshape(look_at_matrix, (16, 1), order="F")
+        lookAt_matrix = tr.lookAt(self.position, self.focus, np.array([0, 1, 0], dtype=np.float32))
+        return np.reshape(lookAt_matrix, (16, 1), order="F")
 
     def get_projection(self):
-        perspective_matrix = tr.perspective(60, self.width / self.height, 0.1, 100)
+        if self.type == "perspective":
+            perspective_matrix = tr.perspective(90, self.width / self.height, 0.01, 100)
+        elif self.type == "orthographic":
+            depth = self.position - self.focus
+            depth = np.linalg.norm(depth)
+            perspective_matrix = tr.ortho(-(self.width / self.height) * depth, (self.width / self.height) * depth,
+                                          -1 * depth, 1 * depth, 0.01, 100)
         return np.reshape(perspective_matrix, (16, 1), order="F")
+
+    def resize(self, width, height):
+        self.width = width
+        self.height = height
 
 
 class OrbitCamera(Camera):
@@ -136,111 +190,58 @@ class OrbitCamera(Camera):
         self.position[2] = self.distance * np.sin(self.theta) * np.cos(self.phi)
 
 
-# class SceneGraph:
-#     graph: DiGraph
-#
-#     def __init__(self, cam=None):
-#         self.graph = nx.DiGraph(root="root")
-#         self.add_node("root")
-#         self.camera = cam
-#
-#     def add_node(self,
-#                  name,
-#                  attach_to=None,
-#                  mesh=None,
-#                  color=None,
-#                  transform=tr.identity(),
-#                  position=None,
-#                  rotation=None,
-#                  scale=None,
-#                  mode=GL.GL_TRIANGLES):
-#         if scale is None:
-#             scale = [1, 1, 1]
-#         if rotation is None:
-#             rotation = [0, 0, 0]
-#         if position is None:
-#             position = [0, 0, 0]
-#         if color is None:
-#             color = [1, 1, 1]
-#         self.graph.add_node(
-#             name,
-#             mesh=mesh,
-#             color=color,
-#             transform=transform,
-#             position=np.array(position, dtype=np.float32),
-#             rotation=np.array(rotation, dtype=np.float32),
-#             scale=np.array(scale, dtype=np.float32),
-#             mode=mode)
-#         if attach_to is None:
-#             attach_to = "root"
-#
-#         self.graph.add_edge(attach_to, name)
-#
-#     def __getitem__(self, name):
-#         if name not in self.graph.nodes:
-#             raise KeyError(f"Node {name} not in graph")
-#
-#         return self.graph.nodes[name]
-#
-#     def __setitem__(self, name, value):
-#         if name not in self.graph.nodes:
-#             raise KeyError(f"Node {name} not in graph")
-#
-#         self.graph.nodes[name] = value
-#
-#     def get_transform(self, node):
-#         node = self.graph.nodes[node]
-#         transform = node["transform"]
-#         translation_matrix = tr.translate(node["position"][0], node["position"][1], node["position"][2])
-#         rotation_matrix = tr.rotationX(node["rotation"][0]) @ tr.rotationY(node["rotation"][1]) @ tr.rotationZ(
-#             node["rotation"][2])
-#         scale_matrix = tr.scale(node["scale"][0], node["scale"][1], node["scale"][2])
-#         return transform @ translation_matrix @ rotation_matrix @ scale_matrix
-#
-#     def draw(self):
-#         root_key = self.graph.graph["root"]
-#         edges = list(nx.edge_dfs(self.graph, source=root_key))
-#         transformations = {root_key: self.get_transform(root_key)}
-#
-#         for src, dst in edges:
-#             current_node = self.graph.nodes[dst]
-#
-#             if dst not in transformations:
-#                 transformations[dst] = transformations[src] @ self.get_transform(dst)
-#
-#             if current_node["mesh"] is not None:
-#                 current_pipeline = current_node["mesh"].pipeline
-#                 current_pipeline.use()
-#
-#                 if self.camera is not None:
-#                     if "u_view" in current_pipeline.uniforms:
-#                         current_pipeline["u_view"] = self.camera.get_view()
-#
-#                     if "u_projection" in current_pipeline.uniforms:
-#                         current_pipeline["u_projection"] = self.camera.get_projection()
-#
-#                 current_pipeline["u_model"] = np.reshape(transformations[dst], (16, 1), order="F")
-#
-#                 if "u_color" in current_pipeline.uniforms:
-#                     current_pipeline["u_color"] = np.array(current_node["color"], dtype=np.float32)
-#                 current_node["mesh"].draw(current_node["mode"])
-#
+class FreeCamera(Camera):
+    def __init__(self, position=[0, 0, 0], camera_type="perspective"):
+        super().__init__(camera_type)
+        self.position = np.array(position, dtype=np.float32)
+        self.pitch = 0
+        self.yaw = 0
+        self.forward = np.array([0, 0, -1], dtype=np.float32)
+        self.right = np.array([1, 0, 0], dtype=np.float32)
+        self.up = np.array([0, 1, 0], dtype=np.float32)
+        self.update()
+
+    def update(self):
+        self.forward[0] = np.cos(self.yaw) * np.cos(self.pitch)
+        self.forward[1] = np.sin(self.pitch)
+        self.forward[2] = np.sin(self.yaw) * np.cos(self.pitch)
+        self.forward = self.forward / np.linalg.norm(self.forward)
+
+        self.right = np.cross(self.forward, np.array([0, 1, 0], dtype=np.float32))
+        self.right = self.right / np.linalg.norm(self.right)
+
+        self.up = np.cross(self.right, self.forward)
+        self.up = self.up / np.linalg.norm(self.up)
+
+        self.focus = self.position + self.forward
+
 
 class Car:
-    def __init__(self, controller, transform=None, material=Material()):
+    def __init__(self, controller, transform=None, material=Material(), attach_to=None, name="car"):
+        self.name = name
+        self.controller = controller
+        self.material = material
         if transform is None:
             transform = [[1, -1.75, 0], [1, 1, 1], [0, 0, -np.pi / 9]]
         else:
             transform = np.array([[1, -1.75, 0], [1, 1, 1], [0, 0, -np.pi / 9]]) + transform
-        self.graph = SceneGraph(controller=controller)
+        self.default_transform = transform
+        if attach_to is None:
+            self.graph = SceneGraph(controller=controller)
+            self.graph.add_node(name,
+                                position=transform[0],
+                                scale=transform[1],
+                                rotation=transform[2])
+        else:
+            attach_to.add_node(name,
+                               attach_to="root",
+                               position=transform[0],
+                               scale=transform[1],
+                               rotation=transform[2])
+            self.graph = attach_to
 
-        self.graph.add_node("car",
-                            position=transform[0],
-                            scale=transform[1],
-                            rotation=transform[2])
-
-        self.graph.add_node("chassis",
-                            attach_to="car",
+        self.graph.add_node(name + "chassis",
+                            attach_to=name,
                             mesh=chassis_mesh,
                             scale=[3, 3, 3],
                             texture=Texture(),
@@ -248,34 +249,34 @@ class Car:
                             position=[0, -0.25, 0],
                             material=material)
 
-        self.graph.add_node("wheels", attach_to="car", scale=[1, 1, 1], position=[0, -1, 0])
+        self.graph.add_node(name + "wheels", attach_to=name, scale=[1, 1, 1], position=[0, -1, 0])
 
-        self.graph.add_node("forward_wheels", attach_to="wheels", position=[1.75, 0, 0])
-        self.graph.add_node("wheel0",
-                            attach_to="forward_wheels",
+        self.graph.add_node(name + "forward_wheels", attach_to=name + "wheels", position=[1.75, 0, 0])
+        self.graph.add_node(name + "wheel0",
+                            attach_to=name + "forward_wheels",
                             mesh=wheel_mesh,
                             texture=Texture(),
                             pipeline=textured_mesh_lit_pipeline,
                             position=[0, 0, 1.25],
                             material=mat_black_rubber)
-        self.graph.add_node("wheel1",
-                            attach_to="forward_wheels",
+        self.graph.add_node(name + "wheel1",
+                            attach_to=name + "forward_wheels",
                             mesh=wheel_mesh,
                             texture=Texture(),
                             pipeline=textured_mesh_lit_pipeline,
                             position=[0, 0, -1.25],
                             material=mat_black_rubber)
 
-        self.graph.add_node("backward_wheels", attach_to="wheels", position=[-1.75, 0, 0])
-        self.graph.add_node("wheel2",
-                            attach_to="backward_wheels",
+        self.graph.add_node(name + "backward_wheels", attach_to=name + "wheels", position=[-1.75, 0, 0])
+        self.graph.add_node(name + "wheel2",
+                            attach_to=name + "backward_wheels",
                             mesh=wheel_mesh,
                             texture=Texture(),
                             pipeline=textured_mesh_lit_pipeline,
                             position=[0, 0, 1.25],
                             material=mat_black_rubber)
-        self.graph.add_node("wheel3",
-                            attach_to="backward_wheels",
+        self.graph.add_node(name + "wheel3",
+                            attach_to=name + "backward_wheels",
                             mesh=wheel_mesh,
                             texture=Texture(),
                             pipeline=textured_mesh_lit_pipeline,
@@ -286,15 +287,31 @@ class Car:
         self.graph.draw()
 
     def update(self):
-        if (self.graph.graph.nodes["car"]["scale"] > 1.0).any():
-            self.graph.graph.nodes["car"]["scale"] = np.array([1.0, 1.0, 1.0])
+        if (self.graph.graph.nodes[self.name]["scale"] > 1.0).any():
+            self.graph.graph.nodes[self.name]["scale"] = np.array([1.0, 1.0, 1.0])
+        # if np.pi / 4 < self.graph.graph.nodes[self.name + "forward_wheels"]["rotation"][1]:
+        #     self.graph.graph.nodes[self.name + "forward_wheels"]["rotation"][1] = np.pi / 4
+        # elif self.graph.graph.nodes[self.name + "forward_wheels"]["rotation"][1] < - np.pi / 4:
+        #     self.graph.graph.nodes[self.name + "forward_wheels"]["rotation"][1] = - np.pi / 4
+        # if np.pi / 4 < self.graph.graph.nodes[self.name + "wheel1"]["rotation"][1]:
+        #     self.graph.graph.nodes[self.name + "wheel1"]["rotation"][1] = np.pi / 4
+        # elif self.graph.graph.nodes[self.name + "wheel1"]["rotation"][1] < - np.pi / 4:
+        #     self.graph.graph.nodes[self.name + "wheel1"]["rotation"][1] = - np.pi / 4
+
+    def copy_and_attach(self, controller, attach_to, name=None):
+        if name is None:
+            name = self.name + "copy"
+        return Car(controller=controller, material=self.material, attach_to=attach_to, name=name)
 
 
 if __name__ == "__main__":
 
-    camera = OrbitCamera(20)
+    camera = OrbitCamera(10)
 
-    controller = Controller("Tarea 1 - Andres Gallardo Cornejo")
+    world = b2World(gravity=(0, 0))
+    car_body = None
+
+    controller = Controller("Tarea 3 - Andres Gallardo Cornejo")
     controller.program_state["camera"] = camera
 
     textured_mesh_lit_pipeline = helpers.init_pipeline(
@@ -305,6 +322,8 @@ if __name__ == "__main__":
     wheel_mesh = helpers.mesh_from_file("./wheel.obj")[0]["mesh"]
     garage_mesh = helpers.mesh_from_file("./garage.obj")[0]["mesh"]
     platform_mesh = helpers.mesh_from_file("./platform.obj")[0]["mesh"]
+
+    selection_cars = SceneGraph(controller=controller)
 
     mat_black_rubber = Material(
         ambient=[0.02, 0.02, 0.02],
@@ -317,7 +336,7 @@ if __name__ == "__main__":
         diffuse=[0.61424, 0.04136, 0.04136],
         specular=[0.727811, 0.626959, 0.626959],
         shininess=0.6 * 32)
-    car1 = Car(controller=controller, material=mat_car_1)
+    car1 = Car(controller=controller, material=mat_car_1, attach_to=selection_cars, name="car1")
 
     mat_car_2 = Material(
         ambient=[0.329412, 0.223529, 0.027451],
@@ -325,7 +344,7 @@ if __name__ == "__main__":
         specular=[0.992157, 0.941176, 0.807843],
         shininess=0.21794872 * 32)
     car2 = Car(controller=controller, transform=np.array([[0, 0, -5.5], [-1, -1, -1], [0, 0, 0]]),
-               material=mat_car_2)
+               material=mat_car_2, attach_to=selection_cars, name="car2")
 
     mat_car_3 = Material(
         ambient=[0.0215, 0.1745, 0.0215],
@@ -333,131 +352,298 @@ if __name__ == "__main__":
         specular=[0.633, 0.727811, 0.633],
         shininess=0.6 * 32)
     car3 = Car(controller=controller, transform=np.array([[0, 0, 5.5], [-1, -1, -1], [0, 0, 0]]),
-               material=mat_car_3)
+               material=mat_car_3, attach_to=selection_cars, name="car3")
+
+    mat_car_4 = Material(
+        ambient=[0.0, 0.1, 0.06],
+        diffuse=[0.0, 0.50980392, 0.50980392],
+        specular=[0.50196078, 0.50196078, 0.50196078],
+        shininess=0.25 * 32)
+    car4 = Car(controller=controller, transform=np.array([[0, 0, 5.5], [-1, -1, -1], [0, 0, 0]]),
+               material=mat_car_4, attach_to=selection_cars, name="car4")
 
     car_list = CarList(car1)
     car_list.add_car(car2)
     car_list.add_car(car3)
+    car_list.add_car(car4)
 
-    environment = SceneGraph(controller=controller)
+    selected_car = None
+
+    selected_car_chassis_body = world.CreateDynamicBody(position=(1.5, 0))
+    selected_car_chassis_body.CreatePolygonFixture(box=(0.5, 0.5), density=1, friction=100000000000)
+    selected_car_chassis_body.linearDamping = 1.0
+    selected_car_chassis_body.angularDamping = 1.0
+    controller.program_state["car_body"] = selected_car_chassis_body
+
+    selection_environment = SceneGraph(controller=controller)
+    track_environment = SceneGraph(controller=controller)
 
     mat_environment = Material(
         ambient=[0.5, 0.5, 0.5],
         diffuse=[0.55, 0.55, 0.55],
         specular=[0.70, 0.70, 0.70],
-        shininess=0.15*32)
+        shininess=0.15 * 32)
 
-    environment.add_node("garage", attach_to="root")
-    environment.add_node("garage_mesh",
-                         attach_to="garage",
-                         mesh=garage_mesh,
-                         texture=Texture(),
-                         scale=[12, 18, 12],
-                         pipeline=textured_mesh_lit_pipeline,
-                         position=[0, 0.325, 0],
-                         material=mat_environment)
+    selection_environment.add_node("garage", attach_to="root")
+    selection_environment.add_node("garage_mesh",
+                                   attach_to="garage",
+                                   mesh=garage_mesh,
+                                   texture=Texture(),
+                                   scale=[12, 18, 12],
+                                   pipeline=textured_mesh_lit_pipeline,
+                                   position=[0, 0.325, 0],
+                                   material=mat_environment)
 
-    environment.add_node("lights", attach_to="root")
+    selection_environment.add_node("lights", attach_to="root")
 
-    environment.add_node("light_directional_0",
-                         attach_to="lights",
-                         pipeline=textured_mesh_lit_pipeline,
-                         position=[-6.5, -5, 6.85],
-                         rotation=[0.75, -0.75, 0],
-                         light=SpotLight(
-                             diffuse=[1, 0, 0],
-                             specular=[0, 0, 1],
-                             ambient=[1, 1, 1],
-                             cutOff=0.80,  # siempre mayor a outerCutOff
-                             outerCutOff=0.19
-                         ))
-    environment.add_node("light_directional_1",
-                         attach_to="lights",
-                         pipeline=textured_mesh_lit_pipeline,
-                         position=[-6.5, -5, -6.85],
-                         rotation=[0.85, -3 * np.pi / 4, 0.75],
-                         light=SpotLight(
-                             diffuse=[1, 0, 1],
-                             specular=[0, 1, 0],
-                             ambient=[1, 1, 1],
-                             cutOff=0.80,  # siempre mayor a outerCutOff
-                             outerCutOff=0.19
-                         ))
+    selection_environment.add_node("light_directional_0",
+                                   attach_to="lights",
+                                   pipeline=textured_mesh_lit_pipeline,
+                                   position=[-6.5, -5, 6.85],
+                                   rotation=[0.75, -0.75, 0],
+                                   light=SpotLight(
+                                       diffuse=[1, 0, 0],
+                                       specular=[0, 0, 1],
+                                       ambient=[1, 1, 1],
+                                       cutOff=0.80,  # siempre mayor a outerCutOff
+                                       outerCutOff=0.19
+                                   ))
+    selection_environment.add_node("light_directional_1",
+                                   attach_to="lights",
+                                   pipeline=textured_mesh_lit_pipeline,
+                                   position=[-6.5, -5, -6.85],
+                                   rotation=[0.85, -3 * np.pi / 4, 0.75],
+                                   light=SpotLight(
+                                       diffuse=[1, 0, 1],
+                                       specular=[0, 1, 0],
+                                       ambient=[1, 1, 1],
+                                       cutOff=0.80,  # siempre mayor a outerCutOff
+                                       outerCutOff=0.19
+                                   ))
 
-    environment.add_node("light_directional_2",
-                         attach_to="lights",
-                         pipeline=textured_mesh_lit_pipeline,
-                         position=[6.5, 5, -6.85],
-                         rotation=[-.65, np.pi - 0.75, 0],
-                         light=SpotLight(
-                             diffuse=[0.55, 0.2, 0.6],
-                             specular=[0.6, 0.5, 0.8],
-                             ambient=[0.3, 0.3, 0.3],
-                             cutOff=0.90,  # siempre mayor a outerCutOff
-                             outerCutOff=0.19
-                         ))
+    selection_environment.add_node("light_directional_2",
+                                   attach_to="lights",
+                                   pipeline=textured_mesh_lit_pipeline,
+                                   position=[6.5, 5, -6.85],
+                                   rotation=[-.65, np.pi - 0.75, 0],
+                                   light=SpotLight(
+                                       diffuse=[0.55, 0.2, 0.6],
+                                       specular=[0.6, 0.5, 0.8],
+                                       ambient=[0.3, 0.3, 0.3],
+                                       cutOff=0.90,  # siempre mayor a outerCutOff
+                                       outerCutOff=0.19
+                                   ))
 
-    environment.add_node("light_directional_3",
-                         attach_to="lights",
-                         pipeline=textured_mesh_lit_pipeline,
-                         position=[6.5, 5, 6.85],
-                         rotation=[-.65,.75,0],
-                         light=SpotLight(
-                             diffuse=[0.55, 0.2, 0.6],
-                             specular=[0.6, 0.5, 0.8],
-                             ambient=[0.3, 0.3, 0.3],
-                             cutOff=0.90,  # siempre mayor a outerCutOff
-                             outerCutOff=0.19
-                         ))
+    selection_environment.add_node("light_directional_3",
+                                   attach_to="lights",
+                                   pipeline=textured_mesh_lit_pipeline,
+                                   position=[6.5, 5, 6.85],
+                                   rotation=[-.65, .75, 0],
+                                   light=SpotLight(
+                                       diffuse=[0.55, 0.2, 0.6],
+                                       specular=[0.6, 0.5, 0.8],
+                                       ambient=[0.3, 0.3, 0.3],
+                                       cutOff=0.90,  # siempre mayor a outerCutOff
+                                       outerCutOff=0.19
+                                   ))
 
-    environment.add_node("platform", attach_to="root")
-    environment.add_node("platform_mesh",
-                         attach_to="platform",
-                         mesh=platform_mesh,
-                         texture=Texture(),
-                         scale=[4, 6, 4],
-                         pipeline=textured_mesh_lit_pipeline,
-                         rotation=[0, np.pi / 2, 0],
-                         position=[0, -4, 0],
-                         material=mat_environment)
+    selection_environment.add_node("platform", attach_to="root")
+    selection_environment.add_node("platform_mesh",
+                                   attach_to="platform",
+                                   mesh=platform_mesh,
+                                   texture=Texture(),
+                                   scale=[4, 6, 4],
+                                   pipeline=textured_mesh_lit_pipeline,
+                                   rotation=[0, np.pi / 2, 0],
+                                   position=[0, -4, 0],
+                                   material=mat_environment)
 
-    def update(dt):
-        controller.program_state["total_time"] += dt
 
-        if controller.is_key_pressed(pyglet.window.key.A):
-            camera.phi -= dt * 5
-        if controller.is_key_pressed(pyglet.window.key.D):
-            camera.phi += dt * 5
-        if controller.is_key_pressed(pyglet.window.key.S):
-            camera.distance += dt * 10
-        if controller.is_key_pressed(pyglet.window.key.W):
-            if camera.distance > 5:
-                camera.distance -= dt * 10
-        if controller.is_key_pressed(pyglet.window.key.SPACE) and not controller.program_state["is_selecting"]:
-            car_list.next_car()
-            car_list.current_car.graph.graph.nodes["car"]["position"] = np.array([1, -1.75, 0])
-            controller.program_state["is_selecting"] = True
-        elif controller.is_key_pressed(pyglet.window.key.SPACE):
-            controller.program_state["is_selecting"] = True
-        else:
-            controller.program_state["is_selecting"] = False
-
-        for car in car_list.get_unselected_cars():
-            car.graph.graph.nodes["car"]["scale"] = np.array([0.0, 0.0, 0.0])
-
-        car_list.current_car.graph.graph.nodes["car"]["scale"] += dt * 3.0
-
-        camera.update()
-        car_list.current_car.update()
+    def update_world(dt):
+        world.Step(
+            dt, controller.program_state["vel_iters"], controller.program_state["pos_iters"]
+        )
+        world.ClearForces()
 
 
     @controller.event
     def on_draw():
+        global draw_scene
         controller.clear()
-        car1.draw()
-        car2.draw()
-        car3.draw()
-        environment.draw()
+        draw_scene()
 
-    pyglet.clock.schedule_interval(update, 1 / 60)
+
+    @controller.event
+    def on_key_press(symbol, modifiers):
+
+        if symbol == pyglet.window.key.E or symbol == pyglet.window.key.Q:
+            if symbol == pyglet.window.key.E:
+                car_list.next_car()
+            elif symbol == pyglet.window.key.Q:
+                car_list.prev_car()
+
+            controller.program_state["pre_selected"] = False
+
+            car_list.current_car.graph.graph.nodes[car_list.current_car.name]["position"] = np.array([1, -1.75, 0])
+            for car in car_list.get_unselected_cars():
+                car.graph.graph.nodes[car.name]["scale"] = np.array([0.0, 0.0, 0.0])
+                car.graph.graph.nodes[car.name]["rotation"] = np.array([0, 0, -np.pi / 9])
+
+        if symbol == pyglet.window.key.SPACE:
+            if controller.program_state["pre_selected"]:
+                controller.program_state["selected"] = True
+            elif not controller.program_state["pre_selected"]:
+                controller.program_state["pre_selected"] = True
+
+
+    @controller.event
+    def on_refresh(dt):
+
+        global update_scene
+        global draw_scene
+        global on_key_press
+        if controller.program_state["selected"]:
+            GL.glClearColor(1, 1, 1, 1)
+
+            selection_cars = None
+            selection_environment = None
+
+            camera = FreeCamera([0, 0, 0], "perspective")
+            camera.position[1] = 8.0
+            camera.pitch = -1.2
+            controller.program_state["camera"] = camera
+
+            controller.program_state["selected_car"] = car_list.current_car.copy_and_attach(controller,
+                                                                                            attach_to=track_environment)
+
+            track_environment.graph.nodes[controller.program_state["selected_car"].name]["rotation"] = np.array(
+                [0, 0, 0])
+            track_environment.graph.nodes[controller.program_state["selected_car"].name]["position"] = np.array(
+                [1.5, 0.6, 0])
+            track_environment.add_node("sun",
+                                       pipeline=[textured_mesh_lit_pipeline],
+                                       position=[0, 2, 0],
+                                       rotation=[-np.pi / 4, 0, 0],
+                                       light=DirectionalLight(diffuse=[1, 1, 1], specular=[0.25, 0.25, 0.25],
+                                                              ambient=[0.15, 0.15, 0.15])
+                                       )
+            track_environment.add_node("floor",
+                                       mesh=Model(Square["position"], Square["uv"], Square["normal"],
+                                                  index_data=Square["indices"]),
+                                       pipeline=textured_mesh_lit_pipeline,
+                                       position=[0, -1, 0],
+                                       rotation=[-np.pi / 2, 0, 0],
+                                       scale=[20, 20, 20],
+                                       texture=Texture(),
+                                       material=Material(
+                                           diffuse=[1, 1, 1],
+                                           specular=[0.5, 0.5, 0.5],
+                                           ambient=[0.1, 0.1, 0.1],
+                                           shininess=256
+                                       ))
+            def draw_scene():
+                track_environment.draw()
+
+            def update_scene(dt):
+
+                if np.linalg.norm(controller.program_state["car_body"].linearVelocity) > 1:
+                    if controller.program_state["forwards"]:
+                        if keyboard[pyglet.window.key.D]:
+                            controller.program_state["car_body"].ApplyTorque(0.15, True)
+                        if keyboard[pyglet.window.key.A]:
+                            controller.program_state["car_body"].ApplyTorque(-0.15, True)
+
+                    else:
+                        if keyboard[pyglet.window.key.A]:
+                            controller.program_state["car_body"].ApplyTorque(0.15, True)
+                        if keyboard[pyglet.window.key.D]:
+                            controller.program_state["car_body"].ApplyTorque(-0.15, True)
+
+                    if not (keyboard[pyglet.window.key.W] or keyboard[pyglet.window.key.S]) and (
+                            keyboard[pyglet.window.key.A] or keyboard[pyglet.window.key.D]):
+                        if 0.10 < controller.program_state["car_body"].angularVelocity or controller.program_state[
+                            "car_body"].angularVelocity < -0.10:
+                            controller.program_state["car_body"].ApplyTorque(
+                                0.15 * -np.sign(controller.program_state["car_body"].angularVelocity), True)
+
+                if keyboard[pyglet.window.key.W]:
+                    controller.program_state["car_body"].ApplyForceToCenter(
+                        (np.cos(controller.program_state["car_body"].angle) * 5,
+                         np.sin(controller.program_state["car_body"].angle) * 5), True)
+                    controller.program_state["forwards"] = True
+
+
+                if keyboard[pyglet.window.key.S]:
+                    controller.program_state["car_body"].ApplyForceToCenter(
+                        (-np.cos(controller.program_state["car_body"].angle) * 5,
+                         -np.sin(controller.program_state["car_body"].angle) * 5), True)
+                    controller.program_state["forwards"] = False
+
+
+                print(np.linalg.norm(controller.program_state["car_body"].linearVelocity))
+
+                if not (keyboard[pyglet.window.key.W] or keyboard[pyglet.window.key.S]):
+                    if 5 < np.linalg.norm(controller.program_state["car_body"].linearVelocity):
+                        controller.program_state["car_body"].ApplyForceToCenter(
+                            (-np.sign(controller.program_state["car_body"].linearVelocity[0]) * np.cos(
+                                controller.program_state["car_body"].angle) *
+                             np.square(controller.program_state["car_body"].linearVelocity[0]),
+                             -np.sign(controller.program_state["car_body"].linearVelocity[1]) * np.sin(
+                                 controller.program_state["car_body"].angle) *
+                             np.square(controller.program_state["car_body"].linearVelocity[1])), True)
+
+                camera = controller.program_state["camera"]
+
+                camera.position[0] = controller.program_state["car_body"].position[0] + np.sin(
+                    controller.program_state["car_body"].angle)
+                camera.position[2] = controller.program_state["car_body"].position[1] - np.cos(
+                    controller.program_state["car_body"].angle)
+                camera.yaw = controller.program_state["car_body"].angle
+
+                track_environment.graph.nodes[controller.program_state["selected_car"].name][
+                    "transform"] = tr.translate(
+                    controller.program_state["car_body"].position[0], 0,
+                    controller.program_state["car_body"].position[1]) @ tr.rotationY(
+                    -controller.program_state["car_body"].angle)
+
+                w = -np.linalg.norm(controller.program_state["car_body"].linearVelocity) / 0.5 * dt
+
+                if - np.pi / 5 < \
+                        track_environment.graph.nodes[controller.program_state["selected_car"].name + "forward_wheels"][
+                            "rotation"][1] + w * controller.program_state["car_body"].angularVelocity * 3 < np.pi / 5:
+                    if controller.program_state["forwards"]:
+                        track_environment.graph.nodes[controller.program_state["selected_car"].name + "forward_wheels"][
+                            "rotation"] = np.array(
+                            [0, w * controller.program_state["car_body"].angularVelocity * 3, 0])
+                    else:
+                        track_environment.graph.nodes[controller.program_state["selected_car"].name + "forward_wheels"][
+                            "rotation"] = np.array(
+                            [0, -  w * controller.program_state["car_body"].angularVelocity * 3, 0])
+
+                track_environment.graph.nodes[controller.program_state["selected_car"].name + "backward_wheels"][
+                    "rotation"] += np.array(
+                    [0, 0, controller.program_state["car_body"].angularVelocity * w])
+
+                track_environment.graph.nodes[controller.program_state["selected_car"].name + "backward_wheels"][
+                    "rotation"] += np.array(
+                    [0, 0, w])
+
+                # track_environment.graph.nodes[controller.program_state["selected_car"].name + "wheel0"][
+                #     "rotation"] += np.array([controller.program_state[
+                #     "car_body"].angle * dt, 0, 0])
+                # track_environment.graph.nodes[controller.program_state["selected_car"].name + "wheel1"][
+                #     "rotation"] += np.array([controller.program_state[
+                #     "car_body"].angle * dt, 0, 0])
+
+                camera.update()
+                car_list.current_car.update()
+                update_world(dt)
+
+            controller.program_state["selected"] = False
+
+        update_scene(dt)
+
+
+    keyboard = pyglet.window.key.KeyStateHandler()
+    controller.push_handlers(keyboard)
     pyglet.app.run()

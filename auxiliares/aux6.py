@@ -13,7 +13,7 @@ sys.path.append('../../')
 # No es necesario este bloque de código si se ejecuta desde la carpeta raíz del repositorio
 
 import grafica.transformations as tr
-import auxiliares.utils.shapes as shapes
+import tareas.tarea3.shapes as shapes
 from auxiliares.utils.camera import FreeCamera
 from auxiliares.utils.drawables import Model, Texture
 from auxiliares.utils.helpers import init_axis, init_pipeline, mesh_from_file, get_path
@@ -254,7 +254,8 @@ if __name__ == "__main__":
         pyglet.graphics.shader.Shader(textured_lit_fragment_source, "fragment"))
 
     cube = Model(shapes.Cube["position"], shapes.Cube["uv"], shapes.Cube["normal"], index_data=shapes.Cube["indices"])
-    pyramid = Model(shapes.SquarePyramid["position"], shapes.SquarePyramid["uv"], shapes.SquarePyramid["normal"], index_data=shapes.SquarePyramid["indices"])
+    pyramid = Model(shapes.SquarePyramid["position"], shapes.SquarePyramid["uv"], shapes.SquarePyramid["normal"], index_data=
+    shapes.SquarePyramid["indices"])
     triangle = Model(shapes.Triangle["position"], shapes.Triangle["uv"], shapes.Triangle["normal"])
     quad = Model(shapes.Square["position"], shapes.Square["uv"], shapes.Square["normal"], index_data=shapes.Square["indices"])
 

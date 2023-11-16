@@ -9,7 +9,7 @@ from pathlib import Path
 # No es necesaria la siguiente línea si el archivo está en el root del repositorio
 sys.path.append(os.path.dirname(os.path.dirname((os.path.abspath(__file__)))))
 import grafica.transformations as tr
-import utils.shapes as shapes
+import tareas.tarea3.shapes as shapes
 
 WIDTH = 640
 HEIGHT = 640
@@ -195,7 +195,7 @@ class SceneGraph():
 class SolarSystem():
     def __init__(self, planet_mesh, camera):
         solar_system = SceneGraph(camera)
-        solar_system.add_node("sun",mesh=planet_mesh, color=shapes.YELLOW)
+        solar_system.add_node("sun", mesh=planet_mesh, color=shapes.YELLOW)
 
         solar_system.add_node("mercury", mesh=planet_mesh, color=shapes.GRAY, scale=[0.12, 0.12, 0.12], position=[1, 0, 0])
         solar_system.add_node("venus", mesh=planet_mesh, color=shapes.ORANGE, scale=[0.3, 0.3, 0.3], position=[2, 0, 0])
@@ -229,60 +229,60 @@ class Person():
         self.graph = SceneGraph(camera)
         self.graph.add_node("body")
         self.graph.add_node("chest",
-                             attach_to="body",
-                             mesh=mesh,
-                             color=shapes.RED,
-                             scale=[0.5, 1, 0.35]
+                            attach_to="body",
+                            mesh=mesh,
+                            color=shapes.RED,
+                            scale=[0.5, 1, 0.35]
                             )
         self.graph.add_node("head",
-                             attach_to="body",
-                             mesh=mesh,
-                             color=shapes.CYAN,
-                             position=[0, 0.75, 0],
-                             scale=[0.35, 0.35, 0.35]
+                            attach_to="body",
+                            mesh=mesh,
+                            color=shapes.CYAN,
+                            position=[0, 0.75, 0],
+                            scale=[0.35, 0.35, 0.35]
                             )
         self.graph.add_node("left_arm",
-                             attach_to="body",
-                             mesh=mesh,
-                             color=shapes.GREEN,
-                             position=[-0.5, 0, 0],
-                             rotation=[0, 0, -0.5],
-                             scale=[0.2, 1, 0.2]
+                            attach_to="body",
+                            mesh=mesh,
+                            color=shapes.GREEN,
+                            position=[-0.5, 0, 0],
+                            rotation=[0, 0, -0.5],
+                            scale=[0.2, 1, 0.2]
                             )
         self.graph.add_node("right_arm",
-                             attach_to="body",
-                             mesh=mesh, color=shapes.GREEN,
-                             position=[0.5, 0, 0],
-                             rotation=[0, 0, 0.5],
-                             scale=[0.2, 1, 0.2],
+                            attach_to="body",
+                            mesh=mesh, color=shapes.GREEN,
+                            position=[0.5, 0, 0],
+                            rotation=[0, 0, 0.5],
+                            scale=[0.2, 1, 0.2],
                             )
         self.graph.add_node("left_leg", attach_to="body")
         self.graph.add_node("right_leg", attach_to="body")
         self.graph.add_node("left_upper_leg",
-                             attach_to="left_leg",
-                             mesh=mesh, color=shapes.BLUE,
-                             position=[-0.2, -0.85, 0],
-                             rotation=[0, 0, -0.15],
-                             scale=[0.25, 0.75, 0.25],
+                            attach_to="left_leg",
+                            mesh=mesh, color=shapes.BLUE,
+                            position=[-0.2, -0.85, 0],
+                            rotation=[0, 0, -0.15],
+                            scale=[0.25, 0.75, 0.25],
                             )
         self.graph.add_node("right_upper_leg",
-                             attach_to="right_leg",
-                             mesh=mesh, color=shapes.BLUE,
-                             position=[0.2, -0.85, 0],
-                             rotation=[0, 0, 0.15],
-                             scale=[0.25, 0.75, 0.25],
+                            attach_to="right_leg",
+                            mesh=mesh, color=shapes.BLUE,
+                            position=[0.2, -0.85, 0],
+                            rotation=[0, 0, 0.15],
+                            scale=[0.25, 0.75, 0.25],
                             )
         self.graph.add_node("left_lower_leg",
-                             attach_to="left_leg",
-                             mesh=mesh, color=shapes.DARK_BLUE,
-                             position=[-0.25, -1.5, 0],
-                             scale=[0.2, 0.75, 0.2],
+                            attach_to="left_leg",
+                            mesh=mesh, color=shapes.DARK_BLUE,
+                            position=[-0.25, -1.5, 0],
+                            scale=[0.2, 0.75, 0.2],
                             )
         self.graph.add_node("right_lower_leg",
-                             attach_to="right_leg",
-                             mesh=mesh, color=shapes.DARK_BLUE,
-                             position=[0.25, -1.5, 0],
-                             scale=[0.2, 0.75, 0.2],
+                            attach_to="right_leg",
+                            mesh=mesh, color=shapes.DARK_BLUE,
+                            position=[0.25, -1.5, 0],
+                            scale=[0.2, 0.75, 0.2],
                             )
 
     def draw(self):
@@ -338,7 +338,7 @@ if __name__ == "__main__":
     axis_scene = SceneGraph(camera)
     axis_scene.add_node("axes", attach_to="root", mesh=axes, mode=GL.GL_LINES)
 
-    cube = Model(shapes.Cube["position"],index_data=shapes.Cube["indices"])
+    cube = Model(shapes.Cube["position"], index_data=shapes.Cube["indices"])
     cube.init_gpu_data(mesh_pipeline)
 
     sphere = Mesh("assets/sphere.off")

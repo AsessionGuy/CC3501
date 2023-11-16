@@ -6,7 +6,7 @@ from OpenGL.GL import GL_LINES
 from pyglet.graphics.shader import ShaderProgram, Shader
 from trimesh.scene.scene import Scene
 
-import auxiliares.utils.shapes as shapes
+import tareas.tarea3.shapes as shapes
 import grafica.transformations as tr
 from auxiliares.utils.drawables import Model, Texture
 from auxiliares.utils.scene_graph import SceneGraph
